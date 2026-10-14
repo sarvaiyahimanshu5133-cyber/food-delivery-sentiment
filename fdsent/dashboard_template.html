@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Food Delivery Brand Sentiment Analysis</title>
+<style>
+  :root {
+    --bg: #0a1020; --panel: #101a31; --panel2: #15213f; --line: #243455; --ink: #e8eefc; --mut: #8da0c6;
+    --neg: #f87171; --neu: #94a3b8; --pos: #34d399; --cy: #38bdf8; --amb: #fbbf24; --pur: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; min-height: 100vh; color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: radial-gradient(1100px 520px at 10% -8%, #1a2a58 0%, transparent 62%),
+                     radial-gradient(900px 480px at 100% 0%, #3a2312 0%, transparent 55%), var(--bg); }
+  code, .mono { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; }
+  main { max-width: 1240px; margin: 0 auto; padding: 22px 18px 60px; }
+  h1 { margin: 0; font-size: 1.7rem; letter-spacing: -.02em; } h1 span { color: #fb923c; }
+  .sub { margin: 2px 0 14px; color: var(--mut); }
+  h2 { font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--mut); margin: 0 0 10px; font-weight: 700; }
+  h3 { margin: 0 0 6px; font-size: 1rem; }
+  .card { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .grid { display: grid; gap: 16px; margin-top: 16px; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  @media (max-width: 520px) { .g2 { grid-template-columns: 1fr; } }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .kpi { padding: 12px 14px; border-radius: 12px; background: #0c1530; border: 1px solid var(--line); }
+  .kpi b { display: block; font-size: 1.45rem; letter-spacing: -.01em; } .kpi span { color: var(--mut); font-size: .8rem; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; position: sticky; top: 0; z-index: 5; padding: 8px 0;
+        background: linear-gradient(var(--bg) 70%, transparent); }
+  nav button { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+               cursor: pointer; font: inherit; font-weight: 600; }
+  nav button[aria-pressed="true"] { background: var(--ink); color: #0a1020; border-color: var(--ink); }
+  button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--amb); outline-offset: 2px; }
+  section { display: none; } section.on { display: block; }
+  .note { color: var(--mut); font-size: .85rem; margin: 8px 0 0; }
+  .insight { padding: 8px 12px; border-left: 3px solid var(--amb); background: #0c1530; border-radius: 0 8px 8px 0; margin: 6px 0; color: #d3def5; }
+  .insight b { color: var(--amb); }
+  select, input[type=text], input[type=search], textarea { font: inherit; background: #0c1530; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  textarea { width: 100%; min-height: 96px; resize: vertical; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; color: var(--mut); font-size: .88rem; }
+  input[type=range] { accent-color: var(--cy); }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: .78rem; font-weight: 700; }
+  .pill.negative { background: #4a1c21; color: var(--neg); } .pill.positive { background: #0f3b31; color: var(--pos); }
+  .pill.neutral { background: #2a3550; color: #cbd5e1; } .pill.tp { background: #1c2a4c; color: #b7c6e6; font-weight: 500; margin: 0 3px 3px 0; }
+  .bcard { border-top: 4px solid var(--bc); }
+  .big { display: flex; gap: 22px; flex-wrap: wrap; margin: 8px 0; }
+  .big div b { display: block; font-size: 2rem; line-height: 1.1; } .big div span { color: var(--mut); font-size: .8rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid #1e2c4c; vertical-align: top; }
+  th { color: var(--mut); font-weight: 600; font-size: .76rem; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .win { color: var(--pos); font-weight: 700; }
+  svg text { font: 11px system-ui, sans-serif; fill: var(--ink); } svg .mut { fill: var(--mut); } svg .ln { stroke: #243455; }
+  svg { max-width: 100%; height: auto; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .82rem; color: var(--mut); margin: 6px 0 0; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .cloud { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; line-height: 1.15; margin-top: 8px; }
+  .words { display: grid; grid-template-columns: 90px 1fr 44px; gap: 4px 8px; align-items: center; font-size: .85rem; }
+  .meter { height: 9px; border-radius: 5px; background: #1c2a4c; overflow: hidden; } .meter i { display: block; height: 100%; border-radius: 5px; }
+  .ex { padding: 8px 0; border-bottom: 1px solid #1e2c4c; font-size: .88rem; } .ex small { color: var(--mut); display: block; margin-top: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .chipbtn { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; font: inherit; font-size: .85rem; }
+  .chipbtn:hover { border-color: var(--cy); }
+  .verdict { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 8px 0 12px; }
+  .verdict .pill { font-size: 1.1rem; padding: 4px 16px; }
+  .tok { padding: 1px 3px; border-radius: 4px; }
+  .what { color: var(--mut); font-size: .84rem; margin: -4px 0 12px; line-height: 1.45; max-width: 100ch; }
+  .what::before { content: "i"; display: inline-grid; place-items: center; width: 15px; height: 15px; margin-right: 7px;
+                  border-radius: 50%; border: 1px solid var(--mut); font-size: .65rem; font-style: italic; font-weight: 700; vertical-align: 1px; }
+  .tabwhat { margin: 2px 0 14px; color: #b7c6e6; font-size: .92rem; }
+  .kpi small { display: block; color: #6f83ab; font-size: .72rem; line-height: 1.3; margin-top: 4px; }
+  .btn.go { background: var(--cy); color: #04121f; border-color: var(--cy); font-weight: 800; padding: 8px 18px; }
+  .btn.alt { background: #fb923c; color: #1e0f02; border-color: #fb923c; font-weight: 800; padding: 8px 18px; }
+  .msgl { font-size: .86rem; margin: 8px 0 0; } .msgl.err { color: var(--neg); } .msgl.ok { color: var(--pos); }
+  .live { display: inline-block; font-size: .65rem; font-weight: 800; letter-spacing: .08em; padding: 1px 7px; border-radius: 5px; background: #0f3b31; color: var(--pos); margin-left: 8px; vertical-align: 2px; }
+  .pager { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .pager button, .btn { font: inherit; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+  .pager button:disabled { opacity: .4; cursor: default; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .step { flex: 1 1 150px; padding: 10px 12px; border-radius: 10px; background: #0c1530; border: 1px solid var(--line); position: relative; }
+  .flow .step b { color: var(--cy); display: block; font-size: .78rem; letter-spacing: .08em; }
+  .flow .step p { margin: 3px 0 0; font-size: .86rem; color: #c4d1ee; }
+  ul.clean { margin: 6px 0 0; padding-left: 18px; color: #c4d1ee; } ul.clean li { margin: 3px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Food Delivery <span>Brand Sentiment</span> Analysis</h1>
+  <p class="sub" id="sub"></p>
+  <div class="kpis" id="kpis"></div>
+  <div id="panel"></div>
+  <nav id="nav"></nav>
+  <p class="tabwhat" id="tabwhat"></p>
+
+  <section id="s-overview"></section>
+  <section id="s-trend"></section>
+  <section id="s-complaints"></section>
+  <section id="s-model"></section>
+  <section id="s-try"></section>
+  <section id="s-reviews"></section>
+  <section id="s-method"></section>
+</main>
+
+<script>
+const D = /*DATA*/null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const sum = a => a.reduce((x, y) => x + y, 0);
+const pct = v => (Math.round(v * 10) / 10).toString();
+const LAB = D.labels;                                   // ["negative","neutral","positive"]
+const COL = {negative: '#f87171', neutral: '#94a3b8', positive: '#34d399'};
+const BRC = ['#fb923c', '#60a5fa', '#c084fc', '#2dd4bf'];
+const bcol = b => BRC[D.brands.indexOf(b) % BRC.length];
+const MODEL_COL = {'VADER': '#94a3b8', 'Naive Bayes': '#c084fc', 'Linear SVM': '#fbbf24', 'Logistic Regression': '#38bdf8'};
+
+/* ====================================================== tiny chart toolkit (plain SVG) */
+function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); for (const m of [1, 2, 2.5, 5, 10]) if (v <= m * p) return m * p; return 10 * p; }
+function legend(items) { return `<div class="legend">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${esc(t)}</span>`).join('')}</div>`; }
+
+function lineChart({xs, series, yMax, yMin = 0, yTitle, w = 760, h = 300, fmt = v => v, band}) {
+  const L = 48, R = 16, T = 14, B = 46, iw = w - L - R, ih = h - T - B;
+  const all = series.flatMap(s => s.ys.filter(v => v != null)).concat(band ? band.flatMap(b => b.hi) : []);
+  let ym = yMax || niceMax(Math.max(...all, 1));
+  if (yMin) ym = yMin + Math.ceil((ym - yMin) / 4) * 4;          // neat tick steps
+  const X = i => L + (xs.length === 1 ? iw / 2 : iw * i / (xs.length - 1)), Y = v => T + ih - ih * (v - yMin) / (ym - yMin);
+  let s = `<svg viewBox="0 0 ${w} ${h}" role="img">`;
+  for (let k = 0; k <= 4; k++) { const v = yMin + (ym - yMin) * k / 4; s += `<line class="ln" x1="${L}" x2="${w - R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="mut" x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${fmt(Math.round(v * 10) / 10)}</text>`; }
+  const every = Math.ceil(xs.length / 12);
+  xs.forEach((x, i) => { if (i % every === 0) s += `<text class="mut" x="${X(i)}" y="${h - B + 16}" text-anchor="middle">${esc(x)}</text>`; });
+  if (yTitle) s += `<text class="mut" x="${L}" y="${h - 6}">${esc(yTitle)}</text>`;
+  (band || []).forEach(b => { s += `<path d="M${b.hi.map((v, i) => `${X(i)},${Y(v)}`).join(' L')} L${b.lo.map((v, i) => `${X(b.lo.length - 1 - i)},${Y(b.lo[b.lo.length - 1 - i])}`).join(' L')} Z" fill="${b.color}" opacity=".18"/>`; });
+  series.forEach(se => {
+    const pts = se.ys.map((v, i) => v == null ? null : [X(i), Y(v), v, i]);
+    let d = '', pen = false;
+    pts.forEach(p => { if (!p) { pen = false; return; } d += `${pen ? 'L' : 'M'}${p[0]},${p[1]} `; pen = true; });
+    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    pts.forEach(p => { if (p) s += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="${se.color}" stroke="#0a1020" stroke-width="1.5"><title>${esc(se.name)} | ${esc(xs[p[3]])}: ${fmt(p[2])}${se.notes ? ' | ' + esc(se.notes[p[3]]) : ''}</title></circle>`; });
+  });
+  return s + '</svg>';
+}
+
+function hGrouped({labels, series, w = 760, max, fmt = v => v + '%'}) {
+  const L = 255, R = 50, rowH = 24 * series.length + 14, h = labels.length * rowH + 10, iw = w - L - R;
+  const m = max || niceMax(Math.max(...series.flatMap(s => s.vals), 1));
+  let s = `<svg viewBox="0 0 ${w} ${h}" role="img">`;
+  labels.forEach((lb, i) => {
+    const y0 = 5 + i * rowH;
+    s += `<text x="${L - 10}" y="${y0 + rowH / 2 - 2}" text-anchor="end">${esc(lb)}</text>`;
+    series.forEach((se, j) => { const v = se.vals[i], bw = iw * v / m, y = y0 + j * 24;
+      s += `<rect x="${L}" y="${y}" width="${Math.max(bw, 1)}" height="19" rx="4" fill="${se.color}"><title>${esc(se.name)}: ${fmt(v)}</title></rect><text class="mut" x="${L + bw + 6}" y="${y + 14}">${fmt(v)}</text>`; });
+  });
+  return s + '</svg>';
+}
+
+function stacked100(rows, w = 760) {   // rows: [{label, segs:[{v,color,name}]}]
+  const L = 90, R = 10, rh = 54, h = rows.length * rh + 26, iw = w - L - R;
+  let s = `<svg viewBox="0 0 ${w} ${h}" role="img">`;
+  rows.forEach((r, i) => { let x = L; const y = 6 + i * rh;
+    s += `<text x="${L - 10}" y="${y + 26}" text-anchor="end" style="font-weight:700;font-size:13px">${esc(r.label)}</text>`;
+    r.segs.forEach(sg => { const bw = iw * sg.v / 100; if (bw <= 0) return;
+      s += `<rect x="${x}" y="${y}" width="${bw}" height="38" fill="${sg.color}"><title>${esc(sg.name)}: ${pct(sg.v)}%</title></rect>` + (bw > 38 ? `<text x="${x + bw / 2}" y="${y + 24}" text-anchor="middle" style="fill:#07101f;font-weight:800;font-size:13px">${Math.round(sg.v)}%</text>` : '');
+      x += bw; }); });
+  for (let k = 0; k <= 4; k++) { const x = L + iw * k / 4; s += `<text class="mut" x="${x}" y="${h - 6}" text-anchor="middle">${k * 25}%</text>`; }
+  return s + '</svg>';
+}
+
+function columns({labels, series, w = 520, h = 240, fmt = v => v + '%'}) {
+  const L = 40, R = 10, T = 12, B = 34, iw = w - L - R, ih = h - T - B;
+  const m = niceMax(Math.max(...series.flatMap(s => s.vals), 1)), gw = iw / labels.length, bw = Math.min(34, (gw - 14) / series.length);
+  let s = `<svg viewBox="0 0 ${w} ${h}" role="img">`;
+  for (let k = 0; k <= 4; k++) { const v = m * k / 4, y = T + ih - ih * v / m; s += `<line class="ln" x1="${L}" x2="${w - R}" y1="${y}" y2="${y}"/><text class="mut" x="${L - 6}" y="${y + 4}" text-anchor="end">${Math.round(v)}</text>`; }
+  labels.forEach((lb, i) => { const x0 = L + i * gw + (gw - bw * series.length) / 2;
+    s += `<text class="mut" x="${L + i * gw + gw / 2}" y="${h - 12}" text-anchor="middle">${esc(lb)}</text>`;
+    series.forEach((se, j) => { const v = se.vals[i], bh = ih * v / m;
+      s += `<rect x="${x0 + j * bw}" y="${T + ih - bh}" width="${bw - 2}" height="${bh}" rx="3" fill="${se.color}"><title>${esc(se.name)}, ${esc(lb)}: ${fmt(v)}</title></rect>`; }); });
+  return s + '</svg>';
+}
+
+function heatmap(mx, w = 330) {
+  const cell = 86, L = 78, T = 28, h = T + cell * 3 + 40;
+  let s = `<svg viewBox="0 0 ${L + cell * 3 + 10} ${h}" role="img">`;
+  LAB.forEach((l, j) => s += `<text class="mut" x="${L + cell * j + cell / 2}" y="${T - 10}" text-anchor="middle">${l}</text>`);
+  mx.forEach((row, i) => { const tot = sum(row) || 1;
+    s += `<text class="mut" x="${L - 8}" y="${T + cell * i + cell / 2 + 4}" text-anchor="end">${LAB[i]}</text>`;
+    row.forEach((v, j) => { const f = v / tot, good = i === j;
+      s += `<rect x="${L + cell * j + 2}" y="${T + cell * i + 2}" width="${cell - 4}" height="${cell - 4}" rx="8" fill="${good ? '#34d399' : '#f87171'}" fill-opacity="${0.08 + 0.85 * f}"><title>actual ${LAB[i]}, predicted ${LAB[j]}: ${v} (${pct(f * 100)}% of ${LAB[i]})</title></rect>` +
+           `<text x="${L + cell * j + cell / 2}" y="${T + cell * i + cell / 2 + 2}" text-anchor="middle" style="font-weight:800;font-size:15px">${v}</text>` +
+           `<text class="mut" x="${L + cell * j + cell / 2}" y="${T + cell * i + cell / 2 + 17}" text-anchor="middle">${Math.round(f * 100)}%</text>`; }); });
+  s += `<text class="mut" x="${L + cell * 1.5}" y="${h - 6}" text-anchor="middle">predicted</text>`;
+  return s + '</svg>';
+}
+
+/* ====================================================== data helpers */
+const R = D.reviews;
+const brandOf = r => D.brands[r.b];
+const sumRow = b => D.summary.find(x => x.brand === b);
+const modelRow = n => D.models.find(m => m.model === n);
+const LR = modelRow('Logistic Regression'), VD = modelRow('VADER');
+
+/* ====================================================== header */
+function header() {
+  const m = D.meta;
+  $('sub').textContent = `${m.n.toLocaleString()} reviews of ${D.brands.join(' and ')}` + (m.date_min ? `, ${m.date_min} to ${m.date_max}` : '') + '. Sentiment is predicted from the review text by a model trained on the star ratings.';
+  $('kpis').innerHTML = [
+    [m.n.toLocaleString(), 'reviews analysed', 'The number of reviews in data/reviews.csv after cleaning.'],
+    [D.brands.length + ' brands', D.brands.join(' vs '), 'The apps being compared. Change them in config.py.'],
+    [pct(LR.accuracy_pos_vs_neg * 100) + '%', 'trained model accuracy', 'How often our model agrees with the star rating on clearly happy or unhappy reviews, tested on reviews it never saw.'],
+    [pct(VD.accuracy_pos_vs_neg * 100) + '%', 'VADER accuracy', 'The ready-made tool on the same reviews, for comparison.'],
+  ].map(([a, b, c]) => `<div class="kpi" title="${esc(c)}"><b>${a}</b><span>${esc(b)}</span><small>${esc(c)}</small></div>`).join('');
+}
+
+/* ====================================================== 1 overview */
+function renderOverview() {
+  const cards = D.brands.map(b => {
+    const s = sumRow(b), st = D.star_dist[b], tot = sum(st), starNeg = (st[0] + st[1]) / tot * 100;
+    const maxStar = Math.max(...st);
+    const hist = st.map((v, i) => `<div style="flex:1;text-align:center"><div style="height:46px;display:flex;align-items:end"><div style="width:100%;height:${Math.max(3, v / maxStar * 46)}px;background:${bcol(b)};border-radius:3px 3px 0 0" title="${i + 1} star: ${v} reviews"></div></div><small class="mut" style="color:var(--mut)">${i + 1}&#9733;</small></div>`).join('');
+    return `<div class="card bcard" style="--bc:${bcol(b)}"><h3>${esc(b)}</h3><p class="what">Share of this brand's reviews the model predicts as negative or positive from the text alone, plus the average star rating. The little bars count how many reviews gave 1 to 5 stars.</p>
+      <div class="big"><div><b style="color:var(--neg)">${pct(s['negative_%'])}%</b><span>negative reviews</span></div>
+      <div><b style="color:var(--pos)">${pct(s['positive_%'])}%</b><span>positive reviews</span></div>
+      <div><b>${s.avg_stars.toFixed(2)}</b><span>average stars</span></div></div>
+      <div style="display:flex;gap:6px;margin:6px 0">${hist}</div>
+      <p class="note">${s.reviews.toLocaleString()} reviews. By star rating alone, ${pct(starNeg)}% are 1-2 stars; the model predicts ${pct(s['negative_%'])}% negative from the text.</p></div>`;
+  }).join('');
+  const rows = D.brands.map(b => { const s = sumRow(b);
+    return {label: b, segs: [{v: s['negative_%'], color: COL.negative, name: 'negative'}, {v: s['neutral_%'], color: COL.neutral, name: 'neutral'}, {v: s['positive_%'], color: COL.positive, name: 'positive'}]}; });
+  const stars = columns({labels: ['1', '2', '3', '4', '5'], series: D.brands.map(b => ({name: b, color: bcol(b), vals: D.star_dist[b].map(v => v / sum(D.star_dist[b]) * 100)})), fmt: v => pct(v) + '%'});
+  // plain-language insights
+  const sb = D.brands.slice().sort((a, c) => sumRow(c)['negative_%'] - sumRow(a)['negative_%']), ins = [];
+  if (sb.length > 1) ins.push(`<b>${esc(sb[0])}</b> has ${Math.round(sumRow(sb[0])['negative_%'] - sumRow(sb[sb.length - 1])['negative_%'])} percentage points more negative reviews than <b>${esc(sb[sb.length - 1])}</b> (${pct(sumRow(sb[0])['negative_%'])}% vs ${pct(sumRow(sb[sb.length - 1])['negative_%'])}%).`);
+  D.brands.forEach(b => { const t = D.topics.filter(x => x.brand === b && x.topic !== D.no_topic).sort((x, y) => y['negative_reviews_%'] - x['negative_reviews_%'])[0];
+    if (t) ins.push(`The most common complaint about <b>${esc(b)}</b> is <b>${esc(t.topic)}</b>: it appears in ${pct(t['negative_reviews_%'])}% of its negative reviews.`); });
+  ins.push(`The trained model is right on <b>${pct(LR.accuracy_pos_vs_neg * 100)}%</b> of clearly happy or unhappy reviews; the ready-made VADER tool is right on only <b>${pct(VD.accuracy_pos_vs_neg * 100)}%</b>.`);
+  $('s-overview').innerHTML = `<div class="grid g2" style="margin-top:0">${cards}</div>
+    <div class="grid g2"><div class="card"><h2>Sentiment of reviews, by brand</h2>${stacked100(rows)}${legend([[COL.negative, 'negative'], [COL.positive, 'positive'], [COL.neutral, 'neutral']])}
+    <p class="note">Only about 4% of reviews have 3 stars (neutral), so the model files almost everything as positive or negative. See Model Lab.</p></div>
+    <div class="card"><h2>Star ratings (share of each brand's reviews)</h2>${stars}${legend(D.brands.map(b => [bcol(b), b]))}
+    <p class="note">People who write reviews are mostly very happy (5 stars) or very angry (1 star).</p></div></div>
+    <div class="card" style="margin-top:16px"><h2>What the data says</h2>${ins.map(t => `<div class="insight">${t}</div>`).join('')}</div>`;
+}
+
+/* ====================================================== 2 trend */
+const TR = {by: 'hour', min: 10};
+function renderTrend() {
+  const rows = TR.by === 'day' ? D.trend_day : D.trend_hour;
+  const xs = [...new Set(rows.map(r => r.w))].sort((a, b) => (typeof a === 'number' ? a - b : String(a).localeCompare(String(b))));
+  const series = D.brands.map(b => ({name: b, color: bcol(b),
+    ys: xs.map(x => { const r = rows.find(q => q.brand === b && q.w === x); return r && r.n >= TR.min ? r.neg : null; }),
+    notes: xs.map(x => { const r = rows.find(q => q.brand === b && q.w === x); return r ? r.n + ' reviews' : 'no reviews'; })}));
+  const counts = columns({labels: xs.map(x => TR.by === 'hour' ? x : String(x).slice(5)), series: D.brands.map(b => ({name: b, color: bcol(b), vals: xs.map(x => { const r = rows.find(q => q.brand === b && q.w === x); return r ? r.n : 0; })})), w: 760, h: 220, fmt: v => v + ' reviews'});
+  $('s-trend').innerHTML = `<div class="card"><h2>% of reviews that are negative</h2>
+    <div class="bar"><label>Group by <select id="tby"><option value="hour" ${TR.by === 'hour' ? 'selected' : ''}>hour of the day</option><option value="day" ${TR.by === 'day' ? 'selected' : ''}>day</option></select></label>
+    <label>Hide groups with fewer than <b id="tminv">${TR.min}</b> reviews <input type="range" id="tmin" min="1" max="60" value="${TR.min}"></label></div>
+    ${lineChart({xs: xs.map(String), series, yMax: 100, yTitle: TR.by === 'hour' ? 'hour of the day (0-23)' : 'day', fmt: v => v + '%'})}
+    ${legend(D.brands.map(b => [bcol(b), b]))}</div>
+    <div class="card" style="margin-top:16px"><h2>How many reviews in each group</h2>${counts}${legend(D.brands.map(b => [bcol(b), b]))}
+    <p class="note">The reviews cover only <b>${D.meta.days} day(s)</b> (${esc(D.meta.date_min)} to ${esc(D.meta.date_max)}) because the Play Store gives the newest reviews first. Hourly points are noisy when a group has few reviews. For a real daily trend, download more reviews:
+    <code>python run.py collect --count 5000</code>, then run <code>python run.py</code> again. Times are as stored by the scraper.</p></div>`;
+  $('tby').onchange = e => { TR.by = e.target.value; renderTrend(); };
+  $('tmin').oninput = e => { TR.min = +e.target.value; renderTrend(); };
+}
+
+/* ====================================================== 3 complaints */
+const CP = {topic: -1, brand: ''};
+function renderComplaints() {
+  const topics = [...D.topic_names, D.no_topic];
+  const bars = hGrouped({labels: topics, series: D.brands.map(b => ({name: b, color: bcol(b), vals: topics.map(t => (D.topics.find(x => x.brand === b && x.topic === t) || {})['negative_reviews_%'] || 0)})), max: 100});
+  const wordsCol = b => { const ws = D.words.filter(w => w.brand === b), mx = Math.max(...ws.map(w => w['share_%']), 1);
+    return `<div class="card"><h2>Common words in ${esc(b)}'s negative reviews</h2><div class="words">${ws.map(w => `<span>${esc(w.word)}</span><div class="meter"><i style="width:${w['share_%'] / mx * 100}%;background:${bcol(b)}"></i></div><span class="mut" style="color:var(--mut)">${pct(w['share_%'])}%</span>`).join('')}</div>
+    <div class="cloud">${ws.map(w => `<span style="font-size:${12 + 22 * w['share_%'] / mx}px;color:${bcol(b)};opacity:${0.55 + 0.45 * w['share_%'] / mx}">${esc(w.word)}</span>`).join('')}</div></div>`; };
+  $('s-complaints').innerHTML = `<div class="card"><h2>Why do people complain? (share of negative reviews that mention each topic)</h2>${bars}${legend(D.brands.map(b => [bcol(b), b]))}
+    <p class="note">One review can mention several topics. Topics are found with keyword lists (English and Hinglish) in <code>fdsent/analyze.py</code>. A review like "worst app" mentions no topic.</p></div>
+    <div class="grid g2">${D.brands.map(wordsCol).join('')}</div>
+    <div class="card" style="margin-top:16px"><h2>Read the actual complaints</h2>
+    <div class="bar"><label>Topic <select id="cpt"><option value="-1">any topic</option>${D.topic_names.map((t, i) => `<option value="${i}" ${CP.topic === i ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+    <label>Brand <select id="cpb"><option value="">both</option>${D.brands.map(b => `<option ${CP.brand === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select></label></div>
+    <div id="cplist"></div></div>`;
+  const draw = () => {
+    const hits = R.filter(r => r.p === 0 && (CP.topic < 0 || r.tp.includes(CP.topic)) && (!CP.brand || brandOf(r) === CP.brand) && r.t.length > 25);
+    $('cplist').innerHTML = `<p class="note" style="margin-top:0">${hits.length} negative reviews match. Showing 8.</p>` + hits.slice(0, 8).map(r => `<div class="ex">${esc(r.t)}<small>${esc(brandOf(r))} &middot; ${r.r}&#9733; &middot; ${esc(r.d)}</small></div>`).join('');
+  };
+  $('cpt').onchange = e => { CP.topic = +e.target.value; draw(); };
+  $('cpb').onchange = e => { CP.brand = e.target.value; draw(); };
+  draw();
+}
+
+/* ====================================================== 4 model lab */
+const LIVE = !!D.live;
+let ML = {cm: 'Logistic Regression'};
+function renderModel() {
+  const names = D.models.map(m => m.model), best = Math.max(...D.models.map(m => m.accuracy));
+  const table = `<table><tr><th>Model</th><th>Accuracy<br>(3 classes)</th><th>Accuracy<br>(positive vs negative)</th><th>Macro F1</th><th>F1 negative</th><th>F1 neutral</th><th>F1 positive</th><th>Per-fold accuracy<br>(mean &plusmn; spread)</th></tr>` +
+    D.models.map(m => `<tr><td><b style="color:${MODEL_COL[m.model]}">${esc(m.model)}</b></td><td class="num ${m.accuracy === best ? 'win' : ''}">${pct(m.accuracy * 100)}%</td><td class="num">${pct(m.accuracy_pos_vs_neg * 100)}%</td><td class="num">${m.macro_f1.toFixed(2)}</td><td class="num">${m.f1_negative.toFixed(2)}</td><td class="num">${m.f1_neutral.toFixed(2)}</td><td class="num">${m.f1_positive.toFixed(2)}</td><td class="num">${pct(m.fold_mean * 100)}% &plusmn; ${pct(m.fold_std * 100)}</td></tr>`).join('') + '</table>';
+  const bars = columns({labels: ['Accuracy', 'Positive vs negative', 'Macro F1'], series: D.models.map(m => ({name: m.model, color: MODEL_COL[m.model], vals: [m.accuracy * 100, m.accuracy_pos_vs_neg * 100, m.macro_f1 * 100]})), w: 640, h: 260, fmt: v => pct(v) + '%'});
+  const lc = D.learning, lcChart = lineChart({xs: lc.map(p => p.train_size), series: [{name: 'Accuracy', color: '#38bdf8', ys: lc.map(p => p.accuracy * 100)}], band: [{color: '#38bdf8', hi: lc.map(p => (p.accuracy + p.std) * 100), lo: lc.map(p => (p.accuracy - p.std) * 100)}], yMin: Math.floor(Math.min(...lc.map(p => (p.accuracy - p.std) * 100))) - 2, yMax: Math.min(100, Math.ceil(Math.max(...lc.map(p => (p.accuracy + p.std) * 100))) + 2), yTitle: 'number of reviews used for training', fmt: v => v + '%', h: 250});
+  const cs = D.c_sweep, csChart = lineChart({xs: cs.map(p => p.C), series: [{name: 'Accuracy', color: '#38bdf8', ys: cs.map(p => p.accuracy * 100)}, {name: 'Macro F1', color: '#fbbf24', ys: cs.map(p => p.macro_f1 * 100)}], yMin: Math.floor(Math.min(...cs.map(p => p.macro_f1 * 100))) - 5, yMax: Math.min(100, Math.ceil(Math.max(...cs.map(p => p.accuracy * 100))) + 3), yTitle: 'C (bigger = trust the training data more)', fmt: v => v + '%', h: 250});
+  const feat = (cls, color) => { const f = D.features[cls].slice(0, 12), mx = Math.max(...f.map(x => x[1]));
+    return `<div class="card"><h2>Words that push towards <span style="color:${color}">${cls}</span></h2><div class="words">${f.map(x => `<span class="mono">${esc(x[0])}</span><div class="meter"><i style="width:${x[1] / mx * 100}%;background:${color}"></i></div><span class="mut" style="color:var(--mut)">${x[1].toFixed(1)}</span>`).join('')}</div></div>`; };
+  const exs = (list, title) => `<div class="card"><h2>${title}</h2>` + list.map(x => `<div class="ex">${esc(x.text)}<small>${esc(x.brand)} &middot; ${x.rating}&#9733; &middot; actual <span class="pill ${x.label}">${x.label}</span> &middot; trained model <span class="pill ${x.pred}">${x.pred}</span> &middot; VADER <span class="pill ${x.vader}">${x.vader}</span></small></div>`).join('') + '</div>';
+  $('s-model').innerHTML = `<div class="card"><h2>Leaderboard: 4 methods, 5-fold cross-validation</h2><div style="overflow:auto">${table}</div>
+    <p class="note">The answer key is the star rating (1-2 = negative, 3 = neutral, 4-5 = positive). Every review is predicted by a model that never saw it. The three trained models are within about 1 point of each other, which is less than the fold-to-fold spread, so the difference between them is not meaningful. We keep <b>Logistic Regression</b> because it gives probabilities and its weights can be read (see below). All three beat VADER by a wide margin.</p></div>
+    <div class="grid g2"><div class="card"><h2>Scores compared</h2>${bars}${legend(names.map(n => [MODEL_COL[n], n]))}</div>
+    <div class="card"><h2>Confusion matrix</h2><div class="bar"><label>Model <select id="mlcm">${names.map(n => `<option ${ML.cm === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label></div><div style="max-width:380px">${heatmap(D.matrices[ML.cm])}</div>
+    <p class="note">Rows = what the star rating says, columns = what the model predicted. Green diagonal = correct.</p></div></div>
+    <div class="grid g2"><div class="card"><h2>Does more data help? (learning curve)</h2>${lcChart}<p class="note">Accuracy tends to rise slowly as the model sees more reviews (the shaded band is the spread between folds), so collecting more reviews should help a little.</p></div>
+    <div class="card"><h2>Tuning Logistic Regression (setting C)</h2>${csChart}${legend([['#38bdf8', 'Accuracy'], ['#fbbf24', 'Macro F1']])}<p class="note">We tried six values of C. Around 1 to 3 is best, so we use C = 1. Too small and the model is too cautious; too large and it memorises.</p></div></div>
+    <div class="grid g2">${feat('negative', COL.negative)}${feat('positive', COL.positive)}</div>
+    <p class="note">These are the highest-weight words and word-pairs the model learned. Negative words make sense (<i>worst</i>, <i>bad</i>, <i>not</i>); small words like <i>to</i>, <i>the</i> and <i>and</i> appear only because angry reviews tend to be long, so they carry weight by accident. That is a quirk of the data, not a rule about English.</p>
+    <div class="card" style="margin-top:16px"><h2>Why is "neutral" so weak?</h2><ul class="clean"><li>Only <b>${D.models.length ? Math.round(sum(D.matrices['VADER'][1]) / D.meta.n * 100) : 4}%</b> of the reviews are 3 stars, so the model has barely any examples to learn from.</li>
+    <li>A 3-star review mixes good and bad ("food was good but the delivery was late"), so the words give no clear signal.</li>
+    <li>We tried forcing the model to predict neutral (class balancing). Neutral did not improve, and overall accuracy fell from 87% to 67%. So we kept the better model and say clearly that neutral is its weak spot.</li></ul></div>
+    <div class="grid g2">${exs(D.hard.model_fixes_vader, `Where VADER fails but the trained model is right (${D.hard.counts.model_fixes_vader} reviews)`)}${exs(D.hard.both_wrong, `Where both are wrong (${D.hard.counts.both_wrong} reviews)`)}</div>`;
+  $('mlcm').onchange = e => { ML.cm = e.target.value; renderModel(); };
+}
+
+/* ====================================================== 5 try it (the SAME model, running in the browser) */
+const M = D.jsmodel, VOC = new Map(M.vocab.map((w, i) => [w, i]));
+const POSE = new Set([...D.emoji.pos]), NEGE = new Set([...D.emoji.neg]);
+function cleanText(text) {                        // identical to fdsent/clean.py
+  let t = String(text).normalize('NFKC').toLowerCase();
+  t = t.replace(/https?:\/\/\S+|www\.\S+|@[\p{L}\p{N}_]+/gu, ' ');
+  let o = ''; for (const c of t) o += POSE.has(c) ? ' posemoji ' : NEGE.has(c) ? ' negemoji ' : c;
+  t = o.replace(/(.)\1{2,}/gu, '$1$1').replace(/[^\p{L}\p{N}_\s'\u0900-\u097f]/gu, ' ');
+  return t.replace(/\s+/gu, ' ').trim();
+}
+function predictText(text) {                      // TF-IDF + Logistic Regression, same maths as scikit-learn
+  const tokens = cleanText(text).split(' ').filter(Boolean), grams = tokens.slice();
+  for (let i = 0; i + 1 < tokens.length; i++) grams.push(tokens[i] + ' ' + tokens[i + 1]);
+  const counts = new Map();
+  grams.forEach(g => { if (VOC.has(g)) counts.set(g, (counts.get(g) || 0) + 1); });
+  const feats = []; let norm = 0;
+  counts.forEach((c, g) => { const j = VOC.get(g), v = (1 + Math.log(c)) * M.idf[j]; feats.push([g, j, v]); norm += v * v; });
+  norm = Math.sqrt(norm) || 1;
+  feats.forEach(f => f[2] /= norm);
+  const logit = M.classes.map((_, c) => M.intercept[c] + sum(feats.map(f => M.coef[c][f[1]] * f[2])));
+  const mx = Math.max(...logit), ex = logit.map(v => Math.exp(v - mx)), z = sum(ex), probs = ex.map(v => v / z);
+  const iN = M.classes.indexOf('negative'), iP = M.classes.indexOf('positive');
+  const push = feats.map(f => ({g: f[0], d: (M.coef[iN][f[1]] - M.coef[iP][f[1]]) * f[2]}));   // >0 pushes towards negative
+  return {tokens, probs, label: M.classes[probs.indexOf(Math.max(...probs))], push};
+}
+const EXAMPLES = ['Delivery was very late and the food was cold', 'Super fast delivery, food was hot and tasty. Loved it!', 'Worst app. Order cancelled after 1 hour and no refund. Customer care is useless.',
+  'Food was good but the delivery boy was an hour late', 'Delivery partner was polite but they charged extra delivery fee', 'Refund still not received after 10 days'];
+function renderTry() {
+  $('s-try').innerHTML = `<div class="grid g2" style="margin-top:0"><div class="card"><h2>Type a review</h2>
+    <textarea id="tt" aria-label="Review text">${esc(EXAMPLES[0])}</textarea>
+    <div class="chips">${EXAMPLES.map((e, i) => `<button class="chipbtn" data-i="${i}">${esc(e.length > 34 ? e.slice(0, 34) + '...' : e)}</button>`).join('')}</div>
+    <p class="note">This is the real trained model, running inside this page. Nothing is sent anywhere.</p></div>
+    <div class="card"><h2>Prediction</h2><div id="tout"></div></div></div>
+    <div class="card" style="margin-top:16px"><h2>Many reviews at once</h2>
+    <textarea id="tm" style="min-height:140px" aria-label="One review per line">${esc(EXAMPLES.join('\n'))}</textarea>
+    <div class="bar" style="margin-top:8px"><button class="btn go" id="tmgo">Classify all</button><span id="tmmsg"></span></div>
+    <div style="overflow:auto"><table id="tmtab"></table></div></div>`;
+  const run = () => {
+    const text = $('tt').value;
+    if (!text.trim()) { $('tout').innerHTML = '<p class="note">Type something.</p>'; return; }
+    const r = predictText(text), mxAbs = Math.max(...r.push.map(p => Math.abs(p.d)), 1e-9);
+    const uni = new Map(r.push.filter(p => !p.g.includes(' ')).map(p => [p.g, p.d]));
+    const toks = r.tokens.map(t => { const d = uni.get(t) || 0, a = Math.min(0.75, Math.abs(d) / mxAbs * 0.75);
+      return `<span class="tok" style="background:${d > 0 ? 'rgba(248,113,113,' : 'rgba(52,211,153,'}${a})">${esc(t)}</span>`; }).join(' ');
+    const top = (sign) => r.push.filter(p => p.d * sign > 0).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 6)
+      .map(p => `<span class="pill tp" style="outline:1px solid ${sign > 0 ? COL.negative : COL.positive}">${esc(p.g)}</span>`).join('') || '<span class="note">none</span>';
+    $('tout').innerHTML = `<div class="verdict"><span class="pill ${r.label}">${r.label}</span><span class="note" style="margin:0">${pct(Math.max(...r.probs) * 100)}% sure</span></div>
+      ${M.classes.map((c, i) => `<div style="display:grid;grid-template-columns:70px 1fr 52px;gap:8px;align-items:center;margin:4px 0"><span>${c}</span><div class="meter" style="height:12px"><i style="width:${r.probs[i] * 100}%;background:${COL[c]}"></i></div><span class="mut" style="color:var(--mut)">${pct(r.probs[i] * 100)}%</span></div>`).join('')}
+      ${LIVE ? '<div id="vaderrow" class="note" style="margin:10px 0 0">Asking VADER...</div>' : '<div class="note" style="margin:10px 0 0">VADER\'s answer appears here when you start the project with <code>python run.py</code>.</div>'}
+      <h3 style="margin-top:14px">What the model sees</h3><p style="margin:4px 0;line-height:1.9">${toks || '<span class="note">no known words</span>'}</p>
+      <p class="note" style="margin-top:2px"><span class="tok" style="background:rgba(248,113,113,.6)">red</span> pushes towards negative, <span class="tok" style="background:rgba(52,211,153,.6)">green</span> towards positive. Words the model never saw in training have no colour.</p>
+      <h3>Strongest clues</h3><div><b style="color:var(--neg);font-size:.8rem">NEGATIVE</b> ${top(1)}</div><div style="margin-top:6px"><b style="color:var(--pos);font-size:.8rem">POSITIVE</b> ${top(-1)}</div>`;
+  };
+  let tok = 0;
+  const askVader = text => { if (!LIVE) return; const my = ++tok;
+    post('/api/predict', {texts: [text]}).then(j => { if (my !== tok || !$('vaderrow')) return; const x = j.results[0], agree = x.vader === predictText(text).label;
+      $('vaderrow').innerHTML = `The ready-made tool <b>VADER</b> says <span class="pill ${x.vader}">${x.vader}</span> (score ${x.compound >= 0 ? '+' : ''}${x.compound}). ` + (agree ? 'It agrees with the trained model.' : '<b style="color:var(--amb)">It disagrees with the trained model.</b>'); }).catch(() => {}); };
+  const runBoth = () => { run(); if ($('tt').value.trim()) askVader($('tt').value); };
+  $('tt').oninput = runBoth;
+  $('tmgo').onclick = async () => {
+    const lines = $('tm').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 300), msg = $('tmmsg');
+    if (!lines.length) { msg.textContent = 'Write one review per line.'; return; }
+    let rows;
+    try { rows = LIVE ? (await post('/api/predict', {texts: lines})).results : lines.map(t => { const r = predictText(t); return {text: t, label: r.label, probs: Object.fromEntries(M.classes.map((c, i) => [c, r.probs[i]])), vader: null}; }); }
+    catch (e) { msg.className = 'msgl err'; msg.textContent = e.message; return; }
+    msg.className = 'note'; msg.textContent = rows.length + ' reviews classified.';
+    $('tmtab').innerHTML = '<tr><th>Review</th><th>Trained model</th><th>VADER</th></tr>' + rows.map(x => `<tr><td style="max-width:560px">${esc(x.text)}</td><td><span class="pill ${x.label}">${x.label}</span> <span class="note">${pct(x.probs[x.label] * 100)}%</span></td><td>${x.vader ? `<span class="pill ${x.vader}">${x.vader}</span>` : '<span class="note">needs python run.py</span>'}</td></tr>`).join('');
+  };
+  document.querySelectorAll('#s-try .chipbtn').forEach(b => b.onclick = () => { $('tt').value = EXAMPLES[+b.dataset.i]; runBoth(); });
+  runBoth();
+}
+
+/* ====================================================== 6 reviews table */
+const RV = {brand: '', pred: '', stars: '', topic: '', q: '', sort: 'new', page: 0, size: 15};
+function renderReviews() {
+  $('s-reviews').innerHTML = `<div class="card"><h2>Browse all reviews</h2>
+    <div class="bar"><label>Brand <select id="rb"><option value="">all</option>${D.brands.map(b => `<option>${esc(b)}</option>`).join('')}</select></label>
+    <label>Model says <select id="rp"><option value="">any</option>${LAB.map(l => `<option>${l}</option>`).join('')}</select></label>
+    <label>Stars <select id="rs"><option value="">any</option>${[1, 2, 3, 4, 5].map(s => `<option>${s}</option>`).join('')}</select></label>
+    <label>Topic <select id="rt"><option value="">any</option>${D.topic_names.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join('')}</select></label>
+    <label>Sort <select id="ro"><option value="new">newest first</option><option value="neg">most negative first</option><option value="pos">most positive first</option></select></label>
+    <input type="search" id="rq" placeholder="search words..." aria-label="Search reviews"></div>
+    <div style="overflow:auto"><table id="rtab"></table></div><div class="pager"><button id="rprev">&laquo; Prev</button><span id="rinfo"></span><button id="rnext">Next &raquo;</button></div>
+    <p class="note">"Model says" is the cross-validated prediction (made by a model that had not seen that review). VADER's answer is shown for comparison. Green or red ticks show whether each one matches the star rating.</p></div>`;
+  const draw = () => {
+    let rows = R.filter(r => (!RV.brand || brandOf(r) === RV.brand) && (!RV.pred || LAB[r.p] === RV.pred) && (!RV.stars || r.r === +RV.stars) &&
+      (RV.topic === '' || r.tp.includes(+RV.topic)) && (!RV.q || r.t.toLowerCase().includes(RV.q.toLowerCase())));
+    rows = rows.slice().sort((a, b) => RV.sort === 'new' ? b.d.localeCompare(a.d) : RV.sort === 'neg' ? b.pr[0] - a.pr[0] : b.pr[2] - a.pr[2]);
+    const pages = Math.max(1, Math.ceil(rows.length / RV.size)); RV.page = Math.min(RV.page, pages - 1);
+    const tick = (p, y) => p === y ? '<span class="win">&#10003;</span>' : '<span style="color:var(--neg)">&#10007;</span>';
+    $('rtab').innerHTML = '<tr><th>Date</th><th>Brand</th><th>Stars</th><th>Review</th><th>Model</th><th>VADER</th><th>Topics</th></tr>' +
+      rows.slice(RV.page * RV.size, (RV.page + 1) * RV.size).map(r => `<tr><td class="num" style="white-space:nowrap">${esc(r.d)}</td><td style="color:${BRC[r.b % 4]}">${esc(brandOf(r))}</td><td>${r.r}&#9733;</td><td style="max-width:520px">${esc(r.t)}</td>
+        <td><span class="pill ${LAB[r.p]}">${LAB[r.p]}</span> ${tick(r.p, r.y)}</td><td><span class="pill ${LAB[r.v]}">${LAB[r.v]}</span> ${tick(r.v, r.y)}</td>
+        <td>${r.tp.map(i => `<span class="pill tp">${esc(D.topic_names[i])}</span>`).join('')}</td></tr>`).join('');
+    $('rinfo').textContent = `${rows.length.toLocaleString()} reviews, page ${RV.page + 1} of ${pages}`;
+    $('rprev').disabled = RV.page === 0; $('rnext').disabled = RV.page >= pages - 1;
+  };
+  const bind = (id, key) => $(id).addEventListener(id === 'rq' ? 'input' : 'change', e => { RV[key] = e.target.value; RV.page = 0; draw(); });
+  bind('rb', 'brand'); bind('rp', 'pred'); bind('rs', 'stars'); bind('rt', 'topic'); bind('ro', 'sort'); bind('rq', 'q');
+  $('rprev').onclick = () => { RV.page--; draw(); }; $('rnext').onclick = () => { RV.page++; draw(); };
+  draw();
+}
+
+/* ====================================================== 7 method */
+function renderMethod() {
+  const step = (n, t, p) => `<div class="step"><b>${n}</b><h3>${t}</h3><p>${p}</p></div>`;
+  $('s-method').innerHTML = `<div class="card"><h2>How the project works</h2><div class="flow">
+    ${step('1 COLLECT', 'Reviews', 'Real Google Play reviews with a star rating and text (<code>fdsent/data.py</code>).')}
+    ${step('2 CLEAN', 'Text cleaning', 'Lowercase, remove links, shorten "soooo" to "soo", turn emojis into words (<code>clean.py</code>).')}
+    ${step('3 NUMBERS', 'TF-IDF', 'Each word gets a weight: rare, telling words count more than "the". Word pairs are included, so "not good" differs from "good".')}
+    ${step('4 LEARN', 'Models', 'Naive Bayes, Linear SVM and Logistic Regression learn from the star ratings. VADER needs no training (<code>models.py</code>).')}
+    ${step('5 TEST', 'Cross-validation', 'Train on 4 parts, test on the 5th, repeat 5 times. Like testing a student on questions they have not memorised.')}
+    ${step('6 ANALYSE', 'Brand insights', 'Sentiment share, trend, complaint topics and common words (<code>analyze.py</code>).')}
+    ${step('7 SHOW', 'This dashboard', 'One HTML page. The trained model runs inside it, so there is no server (<code>dashboard.py</code>).')}</div></div>
+    <div class="grid g2"><div class="card"><h2>Key ideas</h2><ul class="clean">
+      <li><b>Supervised learning:</b> the star rating is the answer key the model learns from.</li>
+      <li><b>TF-IDF:</b> turns text into numbers. Term frequency (how often a word appears in a review) times inverse document frequency (how rare it is across reviews).</li>
+      <li><b>Logistic Regression:</b> multiplies each word weight by a learned number and turns the total into probabilities for negative / neutral / positive.</li>
+      <li><b>Accuracy vs F1:</b> accuracy is the share of correct answers. F1 balances precision and recall per class, so a rare class (neutral) cannot hide behind a big one.</li>
+      <li><b>Class imbalance:</b> about 67% of reviews are positive, so a model that always says "positive" is already 67% accurate. That is why we also report F1.</li></ul></div>
+    <div class="card"><h2>Limitations (honest list)</h2><ul class="clean">
+      <li>The reviews cover only <b>${D.meta.days} day(s)</b>, so there is no long-term trend yet.</li>
+      <li>Star ratings are an imperfect answer key: a 5-star review can still contain a complaint.</li>
+      <li>Play Store reviewers are mostly very happy or very angry, not a random sample of customers.</li>
+      <li>Neutral is weak (only about 4% of reviews are 3 stars).</li>
+      <li>Very short or negated phrases (like "not good at all") can be misread, because the model has seen few of them.</li>
+      <li>Hinglish (Hindi in English letters) is only 1-2% of the reviews, so the model handles it poorly.</li>
+      <li>Complaint topics come from keyword lists, so unusual wording is missed.</li></ul></div></div>`;
+}
+
+/* ====================================================== control panel (live) */
+async function post(url, body) {
+  let r;
+  try { r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); }
+  catch (e) { throw new Error('Cannot reach the dashboard server. Is "python run.py" still running in its window?'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('server error ' + r.status));
+  return j;
+}
+let jobStarted = false, pollTimer = null;
+function renderPanel() {
+  const el = $('panel');
+  if (!LIVE) { el.innerHTML = '<div class="card" style="margin-bottom:14px"><h2>Control panel</h2><p class="note" style="margin:0">The live buttons are off because you opened the saved file. Start the project with <code>python run.py</code> to use them.</p></div>'; return; }
+  el.innerHTML = `<div class="card" style="margin-bottom:14px"><h2>Control panel <span class="live">LIVE</span></h2>
+    <div class="bar" style="margin:0"><button class="btn go" id="p-rerun">&#8635; Re-run analysis</button>
+    <span style="margin-left:14px">Download the newest</span><select id="p-count"><option>500</option><option selected>1000</option><option>2000</option><option>5000</option></select><span>reviews per brand</span>
+    <button class="btn alt" id="p-collect">&#11015; Download fresh reviews</button></div>
+    <div id="p-prog" hidden style="margin-top:10px"><div class="meter" style="height:12px"><i id="p-bar" style="width:0;background:var(--cy)"></i></div><p class="note" id="p-stage" style="margin:4px 0 0"></p></div>
+    <p class="msgl" id="p-msg" hidden></p></div>`;
+  $('p-rerun').onclick = () => startJob('/api/rerun', {});
+  $('p-collect').onclick = () => startJob('/api/collect', {count: +$('p-count').value});
+  fetch('/api/status').then(r => r.json()).then(s => { if (s.running) { jobStarted = true; poll(); } }).catch(() => {});
+}
+async function startJob(path, body) {
+  const msg = $('p-msg'); msg.hidden = true;
+  try { await post(path, body); jobStarted = true; poll(); }
+  catch (e) { msg.hidden = false; msg.className = 'msgl err'; msg.textContent = e.message; }
+}
+function poll() {
+  clearInterval(pollTimer);
+  ['p-rerun', 'p-collect'].forEach(id => $(id).disabled = true);
+  $('p-prog').hidden = false;
+  const tick = async () => {
+    let s; try { s = await (await fetch('/api/status')).json(); } catch (e) { return; }
+    $('p-bar').style.width = s.pct + '%'; $('p-stage').textContent = s.stage + ' (' + s.pct + '%)';
+    if (s.running) return;
+    clearInterval(pollTimer); ['p-rerun', 'p-collect'].forEach(id => $(id).disabled = false);
+    if (s.error) { const m = $('p-msg'); m.hidden = false; m.className = 'msgl err'; m.textContent = s.error; $('p-prog').hidden = true; }
+    else if (s.done && jobStarted) { $('p-stage').textContent = 'Done. Reloading the dashboard with the new results...'; setTimeout(() => location.reload(), 500); }
+  };
+  pollTimer = setInterval(tick, 500); tick();
+}
+
+/* ====================================================== a short explanation under every card */
+const WHAT = {
+  'control panel': "Run the project live from this page. 'Re-run analysis' re-reads the reviews, retrains and compares every model (about 10 seconds). 'Download fresh reviews' fetches newer reviews from the Play Store (needs internet) and then re-runs everything. The page reloads by itself when it finishes.",
+  'sentiment of reviews, by brand': "Share of each brand's reviews that the model calls negative or positive, judged from the text alone. A longer red bar means more unhappy customers.",
+  'star ratings': "How many reviews gave 1 to 5 stars, as a share of each brand's reviews. The star rating is the answer key the model learns from.",
+  'what the data says': "Plain-language findings, generated automatically from the numbers on this page.",
+  '% of reviews that are negative': "Share of negative reviews in each time group, for each brand: it shows when complaints peak. The slider hides groups with too few reviews, because tiny groups are too noisy to trust.",
+  'how many reviews in each group': "The number of reviews behind each point of the line above. A short bar means an unreliable point.",
+  'why do people complain': "Among negative reviews only, the share that mention each topic (found with keyword lists). It tells a brand what to fix first.",
+  'common words in': "The words that appear in the most negative reviews of this brand, after removing filler words. Bigger word = more reviews contain it.",
+  'read the actual complaints': "Pick a topic and a brand to read real negative reviews. Use it to check that the numbers match what customers actually say.",
+  'leaderboard': "Four sentiment methods tested on the same reviews with 5-fold cross-validation. Higher is better. F1 judges each class separately, so a rare class cannot hide behind a big one.",
+  'scores compared': "The leaderboard as bars: overall accuracy, accuracy on clearly positive or negative reviews, and macro F1 (the average of the per-class F1 scores).",
+  'confusion matrix': "Rows are what the star rating says, columns are what the method predicted. Numbers on the green diagonal are correct; every other cell is a mistake.",
+  'does more data help': "Accuracy when the model learns from a growing number of reviews. If the line is still rising, collecting more reviews would help.",
+  'tuning logistic regression': "The model has one main setting, C. We tried six values and kept the best, so the choice is based on evidence and not a guess.",
+  'words that push towards negative': "The words and word-pairs with the biggest weight for the negative class: what the model learned. A longer bar means a stronger signal.",
+  'words that push towards positive': "The words and word-pairs with the biggest weight for the positive class: what the model learned.",
+  'why is "neutral" so weak': "An honest explanation of the model's weakest spot, so you can explain it before anyone asks.",
+  'where vader fails': "Real reviews that VADER got wrong but our trained model got right. This is the reason to train a model on your own data.",
+  'where both are wrong': "Real reviews that both methods got wrong. Often the star rating itself is misleading, which shows the limits of using stars as the answer key.",
+  'type a review': "Write any review and the trained model answers instantly. In live mode the server also asks VADER, so you can compare both answers.",
+  'prediction': "The model's answer with its probabilities, the words it paid attention to (red pushes towards negative, green towards positive) and its strongest clues.",
+  'many reviews at once': "Paste one review per line and classify them all together. A quick way to test a batch, for example reviews you copied from the Play Store.",
+  'browse all reviews': "Search and filter every review. For each one you see the star rating, the model's answer and VADER's answer, with a tick when it matches the stars.",
+  'how the project works': "The seven steps from raw reviews to this dashboard.",
+  'key ideas': "The main concepts behind the project, in plain words.",
+  'limitations': "What this project cannot do well. Read this before you present."
+};
+function annotate() {
+  document.querySelectorAll('main h2').forEach(h => {
+    const nx = h.nextElementSibling;
+    if (nx && nx.classList.contains('what')) return;
+    const t = h.textContent.trim().toLowerCase(), key = Object.keys(WHAT).find(k => t.startsWith(k));
+    if (!key) return;
+    const p = document.createElement('p'); p.className = 'what'; p.textContent = WHAT[key]; h.after(p);
+  });
+}
+new MutationObserver(annotate).observe(document.querySelector('main'), {childList: true, subtree: true});
+const TAB_WHAT = {overview: 'Start here: which brand has more unhappy customers, and what does the star pattern look like?',
+  trend: 'When are customers most unhappy? The negative share by hour of the day or by day.',
+  complaints: 'Why are they unhappy? Complaint topics, common words, and the real reviews behind them.',
+  model: 'How good is our model compared with the ready-made tool? Scores, mistakes and what it learned.',
+  try: 'Test the model yourself: type a review, or paste many at once.',
+  reviews: 'Every review in the data, searchable, with what the model and VADER said about it.',
+  method: 'How the whole project works step by step, and what it cannot do.'};
+
+/* ====================================================== tabs */
+const TABS = [['overview', 'Overview', renderOverview], ['trend', 'Trend', renderTrend], ['complaints', 'Why people complain', renderComplaints],
+              ['model', 'Model Lab', renderModel], ['try', 'Try it', renderTry], ['reviews', 'Reviews', renderReviews], ['method', 'Method', renderMethod]];
+const drawn = new Set();
+function show(id) {
+  const t = TABS.find(x => x[0] === id) || TABS[0];
+  TABS.forEach(x => { $('s-' + x[0]).classList.toggle('on', x[0] === t[0]); });
+  if (!drawn.has(t[0])) { t[2](); drawn.add(t[0]); }
+  $('nav').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === t[0]));
+  $('tabwhat').textContent = TAB_WHAT[t[0]] || '';
+  if (location.hash !== '#' + t[0]) history.replaceState(null, '', '#' + t[0]);
+}
+$('nav').innerHTML = TABS.map(t => `<button data-id="${t[0]}" aria-pressed="false" title="${esc(TAB_WHAT[t[0]])}">${t[1]}</button>`).join('');
+$('nav').querySelectorAll('button').forEach(b => b.onclick = () => show(b.dataset.id));
+header();
+renderPanel();
+show(location.hash.slice(1) || 'overview');
+</script>
+</body>
+</html>

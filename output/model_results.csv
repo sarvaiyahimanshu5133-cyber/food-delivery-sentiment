@@ -1,0 +1,5 @@
+model,accuracy,accuracy_pos_vs_neg,macro_f1,f1_negative,f1_neutral,f1_positive,fold_mean,fold_std
+VADER,0.74,0.761,0.555,0.716,0.093,0.855,0.74,0.015
+Naive Bayes,0.871,0.908,0.581,0.83,0.0,0.914,0.871,0.024
+Linear SVM,0.864,0.9,0.575,0.816,0.0,0.908,0.864,0.015
+Logistic Regression,0.869,0.906,0.579,0.826,0.0,0.912,0.869,0.024

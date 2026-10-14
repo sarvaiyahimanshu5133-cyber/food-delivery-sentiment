@@ -1,0 +1,15 @@
+brand,topic,negative_reviews_%
+Swiggy,Delivery / delay,52.7
+Swiggy,Food quality,22.1
+Swiggy,Wrong / missing items,9.5
+Swiggy,Price / charges,20.7
+Swiggy,Refund / support,44.6
+Swiggy,App problems,32.4
+Swiggy,No specific topic (e.g. 'worst app'),13.5
+Zomato,Delivery / delay,46.9
+Zomato,Food quality,26.2
+Zomato,Wrong / missing items,7.5
+Zomato,Price / charges,20.6
+Zomato,Refund / support,41.2
+Zomato,App problems,35.0
+Zomato,No specific topic (e.g. 'worst app'),13.8
